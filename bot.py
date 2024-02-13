@@ -2,6 +2,8 @@ import discord
 from discord.ext import tasks
 import aiohttp
 import asyncio
+import urllib.parse
+
 
 # Definir intents
 intents = discord.Intents.default()
@@ -9,15 +11,18 @@ intents.presences = True
 intents.guilds = True
 intents.members = True
 
-# Variables globales
-DISCORD_TOKEN = 'tu_discord_bot_token'
-RIOT_API_KEY = 'tu_riot_api_key'
-CHANNEL_ID = 123456789 # Tu discord channel ID
+#  Variables globales
+DISCORD_TOKEN = 'your_discord_token'
+RIOT_API_KEY = 'your_riot_api_key'
+CHANNEL_ID = 1234567890  # ID del canal donde enviar notificaciones
 
 # Lista de amigos
-amigos = ['pepe','pipo','papa']
+amigos = ['pepe', 'pipo', 'pepa']
 
-# Bandera para verificar si se ha enviado un mensaje de falta de partidas
+# Diccionario para mantener un registro de los amigos y sus partidas notificadas
+partidas_notificadas = {}
+
+# Variable para verificar si se ha enviado un mensaje de falta de partidas
 missing_games_notified = False
 
 client = discord.Client(intents=intents)
@@ -32,25 +37,33 @@ async def on_ready():
 async def check_friends_game():
     global missing_games_notified
     
-    found_game = False  # Variable para determinar si se ha encontrado una partida
     async with aiohttp.ClientSession() as session:
+        found_game = False
         for amigo in amigos:
             summoner_id = await get_summoner_id(session, amigo)
             if summoner_id:
                 game_data = await get_current_game(session, summoner_id)
                 if game_data:
-                    found_game = True
-                    await notify_game_status(amigo, game_data)
-                    break  # Salir del bucle al encontrar una partida
-    
-    # Si no se encuentra ninguna partida y no se ha notificado antes, enviar mensaje de falta de partidas
-    if not found_game and not missing_games_notified:
-        await notify_missing_games()
-        missing_games_notified = True
-        await asyncio.sleep(60)
+                    if notificar_partida(amigo, game_data):
+                        await notify_game_status(amigo, game_data)
+                        found_game = True
+        if not found_game and not missing_games_notified:
+            await notify_missing_games()
+            missing_games_notified = True
+
+def notificar_partida(amigo, game_data):
+    if amigo not in partidas_notificadas:
+        partidas_notificadas[amigo] = game_data['gameId']
+        return True
+    elif partidas_notificadas[amigo] != game_data['gameId']:
+        partidas_notificadas[amigo] = game_data['gameId']
+        return True
+    else:
+        return False
 
 async def get_summoner_id(session, summoner_name):
-    url = f'https://la2.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}'
+    summoner_name_encoded = urllib.parse.quote(summoner_name)
+    url = f'https://la2.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name_encoded}'
     headers = {'X-Riot-Token': RIOT_API_KEY}
     async with session.get(url, headers=headers) as response:
         if response.status == 200:
@@ -73,11 +86,6 @@ async def get_current_game(session, summoner_id):
             return None
 
 async def notify_game_status(amigo, game_data):
-    global missing_games_notified
-    
-    # Restablecer la bandera de notificación de falta de partidas
-    missing_games_notified = False
-    
     # Convertir el nombre del amigo a minúsculas
     amigo_lower = amigo.lower()
     
