@@ -4,7 +4,6 @@ import aiohttp
 import asyncio
 import urllib.parse
 
-
 # Definir intents
 intents = discord.Intents.default()
 intents.presences = True
@@ -15,6 +14,7 @@ intents.members = True
 DISCORD_TOKEN = 'your_discord_token'
 RIOT_API_KEY = 'your_riot_api_key'
 CHANNEL_ID = 1234567890  # ID del canal donde enviar notificaciones
+REQUESTS_PER_MINUTE = 20  # Límite de solicitudes por minuto
 
 # Lista de amigos
 amigos = ['pepe', 'pipo', 'pepa']
@@ -24,6 +24,9 @@ partidas_notificadas = {}
 
 # Variable para verificar si se ha enviado un mensaje de falta de partidas
 missing_games_notified = False
+
+# Semáforo para controlar el acceso a la API y respetar el límite de velocidad
+api_semaphore = asyncio.Semaphore(REQUESTS_PER_MINUTE)
 
 client = discord.Client(intents=intents)
 
@@ -42,7 +45,8 @@ async def check_friends_game():
         for amigo in amigos:
             summoner_id = await get_summoner_id(session, amigo)
             if summoner_id:
-                game_data = await get_current_game(session, summoner_id)
+                async with api_semaphore:
+                    game_data = await get_current_game(session, summoner_id)
                 if game_data:
                     if notificar_partida(amigo, game_data):
                         await notify_game_status(amigo, game_data)
@@ -112,10 +116,24 @@ async def notify_game_status(amigo, game_data):
             print(f"Error: Campeón con ID {champion_id} no encontrado.")
     else:
         print(f"Error: Participante {amigo} no encontrado en los datos de la partida.")
+        
+async def get_game_version(session):
+    url = 'https://ddragon.leagueoflegends.com/api/versions.json'
+    async with session.get(url) as response:
+        if response.status == 200:
+            versions = await response.json()
+            if versions:
+                return versions[0]  # La versión más reciente es la primera en la lista
+            else:
+                print("Error: No se encontraron versiones disponibles.")
+        else:
+            print(f"Error al obtener la versión del juego: {response.status}")
+    return None
 
-async def get_champion_name(champion_id):
-    url = f'http://ddragon.leagueoflegends.com/cdn/11.21.1/data/en_US/champion.json'
-    async with aiohttp.ClientSession() as session:
+async def get_champion_name(session, champion_id):
+    game_version = await get_game_version(session)
+    if game_version:
+        url = f'http://ddragon.leagueoflegends.com/cdn/{game_version}/data/en_US/champion.json'
         async with session.get(url) as response:
             if response.status == 200:
                 data = await response.json()
@@ -123,7 +141,10 @@ async def get_champion_name(champion_id):
                 for champion in champions_data.values():
                     if champion['key'] == str(champion_id):
                         return champion['name']
-            return None
+            print(f"Error: Campeón con ID {champion_id} no encontrado.")
+    else:
+        print("Error: No se pudo obtener la versión del juego para buscar el campeón.")
+    return None
 
 async def notify_missing_games():
     # Enviar mensaje de falta de partidas al canal de Discord
