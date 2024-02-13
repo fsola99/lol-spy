@@ -49,7 +49,7 @@ async def check_friends_game():
                     game_data = await get_current_game(session, summoner_id)
                 if game_data:
                     if notificar_partida(amigo, game_data):
-                        await notify_game_status(amigo, game_data)
+                        await notify_game_status(session, amigo, game_data)
                         found_game = True
         if not found_game and not missing_games_notified:
             await notify_missing_games()
@@ -89,7 +89,7 @@ async def get_current_game(session, summoner_id):
             print(f'Error al obtener la partida actual para el invocador {summoner_id}: {response.status}')
             return None
 
-async def notify_game_status(amigo, game_data):
+async def notify_game_status(session, amigo, game_data):
     # Convertir el nombre del amigo a minúsculas
     amigo_lower = amigo.lower()
     
@@ -98,7 +98,7 @@ async def notify_game_status(amigo, game_data):
     if participant:
         # Obtener el ID del campeón que está jugando el amigo
         champion_id = participant['championId']
-        champion_name = await get_champion_name(champion_id)
+        champion_name = await get_champion_name(session, champion_id)
         if champion_name:
             game_mode = game_data['gameMode']
             # Formatear el mensaje
