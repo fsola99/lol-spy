@@ -3,6 +3,7 @@ from discord.ext import tasks
 import aiohttp
 import asyncio
 import urllib.parse
+import json
 
 # Definir intents
 intents = discord.Intents.default()
@@ -10,14 +11,16 @@ intents.presences = True
 intents.guilds = True
 intents.members = True
 
-#  Variables globales
-DISCORD_TOKEN = 'your_discord_token'
-RIOT_API_KEY = 'your_riot_api_key'
-CHANNEL_ID = 1234567890  # ID del canal donde enviar notificaciones
-REQUESTS_PER_MINUTE = 20  # Límite de solicitudes por minuto
+# Lee la configuración desde el archivo config.json
+with open('config.json') as f:
+    config = json.load(f)
 
-# Lista de amigos
-amigos = ['pepe', 'pipo', 'pepa']
+# Variables globales
+DISCORD_TOKEN = config['DISCORD_TOKEN']
+RIOT_API_KEY = config['RIOT_API_KEY']
+CHANNEL_ID = int(config['CHANNEL_ID'])
+REQUESTS_PER_MINUTE = int(config['REQUESTS_PER_MINUTE'])
+FRIENDS_LIST = config['FRIENDS_LIST']
 
 # Diccionario para mantener un registro de los amigos y sus partidas notificadas
 partidas_notificadas = {}
@@ -42,7 +45,7 @@ async def check_friends_game():
     
     async with aiohttp.ClientSession() as session:
         found_game = False
-        for amigo in amigos:
+        for amigo in FRIENDS_LIST:
             summoner_id = await get_summoner_id(session, amigo)
             if summoner_id:
                 async with api_semaphore:
@@ -92,6 +95,7 @@ async def get_current_game(session, summoner_id):
 async def notify_game_status(session, amigo, game_data):
     # Convertir el nombre del amigo a minúsculas
     amigo_lower = amigo.lower()
+    global missing_games_notified
     
     # Buscar el participante correspondiente al amigo en los datos de la partida
     participant = next((p for p in game_data['participants'] if p['summonerName'].lower() == amigo_lower), None)
@@ -112,6 +116,7 @@ async def notify_game_status(session, amigo, game_data):
                 color=discord.Color.green() # Cambia el color del mensaje si lo deseas
             )
             await channel.send(embed=embed)
+            missing_games_notified = True
         else:
             print(f"Error: Campeón con ID {champion_id} no encontrado.")
     else:
