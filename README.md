@@ -16,7 +16,11 @@ Antes de ejecutar el bot, asegúrate de seguir estos pasos:
     "RIOT_API_KEY": "tu_api_key_de_riot",
     "CHANNEL_ID": "tu_id_de_canal",
     "REQUESTS_PER_MINUTE": 20,
-    "FRIENDS_LIST": ["amigo1", "amigo2", "amigo3"]
+    "FRIENDS_LIST": [
+        {"gameName": "amigo1", "tagLine": "1234"},
+        {"gameName": "amigo2", "tagLine": "5678"},
+        {"gameName": "amigo3", "tagLine": "9101"}
+    ]
 }
 ```
 
@@ -33,7 +37,7 @@ Antes de ejecutar el bot, asegúrate de seguir estos pasos:
     - Coloca el ID de tu canal de Discord en el campo `"CHANNEL_ID"` dentro del archivo `config.json`.
 
 5. **Lista de amigos**:
-    - En el campo `"FRIENDS_LIST"` dentro del archivo `config.json`, agrega los nombres de invocador de tus amigos en League of Legends.
+    - En el campo `"FRIENDS_LIST"` dentro del archivo `config.json`, agrega los detalles de tus amigos en League of Legends en el formato { "gameName": "nombre_de_invocador", "tagLine": "tag" }. Reemplaza "nombre_de_invocador" y "tag" con el nombre de invocador y el tag correspondiente de cada amigo.
 
 ## Ejecución del bot
 
