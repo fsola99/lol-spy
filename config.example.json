@@ -1,0 +1,14 @@
+{
+    "DISCORD_TOKEN": "your_discord_bot_token",
+    "RIOT_API_KEY": "your_riot_api_key",
+    "CHANNEL_ID": "123456789012345678",
+    "PLATFORM": "la2",
+    "REGION": "americas",
+    "POLL_SECONDS": 60,
+    "REQUESTS_PER_MINUTE": 100,
+    "ANNOUNCE_WHEN_IDLE": false,
+    "FRIENDS_LIST": [
+        {"gameName": "Friend One", "tagLine": "LAS"},
+        {"gameName": "Friend Two", "tagLine": "1234"}
+    ]
+}
